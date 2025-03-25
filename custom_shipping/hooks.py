@@ -5,6 +5,19 @@ app_description = "Shiprocket integration"
 app_email = "abdullamirshadcl@gmail.com"
 app_license = "mit"
 
+
+
+doc_events = {
+    "Sales Order": {
+        "on_cancel": "custom_shipping.api.cancel_shiprocket_order"
+    },
+    "Sales Invoice": {
+        "on_submit": "custom_shipping.api.create_shiprocket_order",
+    }
+}
+webhooks = {
+    "webhook_handler": "custom_shipping.api.webhook_handler"
+}
 # Apps
 # ------------------
 
