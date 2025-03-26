@@ -18,6 +18,22 @@ doc_events = {
 webhooks = {
     "webhook_handler": "custom_shipping.api.webhook_handler"
 }
+
+fixtures = [
+    {
+        "dt": "Custom Field",
+        "filters": [
+            ["dt", "=", "Item"]
+        ]
+    },
+    {
+        "dt": "Custom Field",
+        "filters": [
+            ["dt", "=", "Sales Order"]
+        ]
+    }
+]
+
 # Apps
 # ------------------
 
