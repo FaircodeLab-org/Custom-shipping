@@ -333,6 +333,7 @@ def webhook_handler():
     try:
         # Get incoming JSON data
         data = json.loads(frappe.request.data or "{}")
+        print("Received data:", data)  # Debugging
 
         # Extract relevant fields
         shiprocket_order_id = data.get("order_id")  # This should match `custom_shiprocket_order_id`
@@ -340,6 +341,9 @@ def webhook_handler():
         estimated_delivery_date = data.get("etd")
         courier_partner = data.get("courier_name")
         current_status = data.get("current_status", "").lower()  # Normalize to lowercase
+        scans = data.get("scans", [])
+
+        print("Extracted fields:", shiprocket_order_id, tracking_number, estimated_delivery_date, courier_partner, current_status, scans)  # Debugging
 
         if not shiprocket_order_id:
             frappe.log_error("Order ID missing in webhook data", "Shiprocket Webhook Error")
@@ -349,6 +353,8 @@ def webhook_handler():
         sales_order_name = frappe.db.get_value("Sales Order", 
                                                {"custom_shiprocket_order_id": shiprocket_order_id}, 
                                                "name")
+
+        print("Sales Order found:", sales_order_name)  # Debugging
 
         if not sales_order_name:
             frappe.log_error(f"Sales Order not found for Order ID: {shiprocket_order_id}", "Shiprocket Webhook Error")
@@ -365,6 +371,26 @@ def webhook_handler():
         # ✅ Ensure database commit after update
         frappe.db.commit()
 
+        # Delete existing tracking scans for this Sales Order
+        frappe.db.sql("""
+            DELETE FROM `tabTracking Scan`
+            WHERE parent = %s AND parenttype = 'Sales Order'
+        """, (sales_order_name,))
+
+        # Insert new tracking scans
+        for scan in scans:
+            name = str(uuid.uuid4())  # Generate a unique ID
+            frappe.db.sql("""
+                INSERT INTO `tabTracking Scan`
+                (name, parent, parentfield, parenttype, date, activity, location) 
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (name, sales_order_name, "custom_tracking_scans", "Sales Order",
+                scan.get("date"), scan.get("activity"), scan.get("location")))
+
+        frappe.db.commit()
+
+
+
         # ✅ If status is "delivered", create a Delivery Note
         if current_status == "delivered":
             frappe.log_error(f"Attempting to create Delivery Note for {sales_order_name}", "Shiprocket Webhook Debug")
@@ -375,8 +401,8 @@ def webhook_handler():
 
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "Shiprocket Webhook Error")
+        print("Error:", str(e))  # Debugging
         return {"success": False, "error": str(e)}
-
 
 
 def create_delivery_note(sales_order_name):
@@ -421,3 +447,24 @@ def create_delivery_note(sales_order_name):
     except Exception as e:
         frappe.log_error(f"Error creating Delivery Note: {frappe.get_traceback()}", "Shiprocket Webhook Error")
         return {"success": False, "error": str(e)}
+
+
+@frappe.whitelist(allow_guest=True)
+def get_tracking_scans(sales_order_name):
+    """Fetch tracking scans for a given Sales Order"""
+    if not sales_order_name:
+        return {"error": "Missing Sales Order Name"}
+
+    try:
+        tracking_scans = frappe.get_all(
+            "Tracking Scan",  # Child Doctype
+            filters={"parent": sales_order_name},  # Filter by Sales Order
+            fields=["date", "location", "activity"],
+            order_by="date asc"
+        )
+
+        return {"message": tracking_scans}
+
+    except frappe.PermissionError:
+        frappe.local.response.http_status_code = 403
+        return {"error": "Permission Denied"}
