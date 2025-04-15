@@ -7,14 +7,34 @@ app_license = "mit"
 
 
 
+# doc_events = {
+#     "Sales Order": {
+#         "on_cancel": "custom_shipping.api.cancel_shiprocket_order"
+#     },
+#     # "Sales Invoice": {
+#     #     "on_submit": "custom_shipping.api.create_shiprocket_order",
+#     # },
+#     "Sales Invoice": {
+#         "on_submit": "custom_shipping.api.create_shiprocket_order"
+#     },
+#     # "Sales Order": {
+#     #     "on_submit": "custom_shipping.api.create_shiprocket_order_cod"
+#     # }
+#     "Sales Order": {
+#     "validate": "custom_shipping.api.trigger_create_cod"
+# }
+# }
+
 doc_events = {
     "Sales Order": {
-        "on_cancel": "custom_shipping.api.cancel_shiprocket_order"
+        "on_cancel": "custom_shipping.api.cancel_shiprocket_order",
+        # "on_update": "custom_shipping.api.trigger_create_cod"
     },
     "Sales Invoice": {
-        "on_submit": "custom_shipping.api.create_shiprocket_order",
+        "on_submit": "custom_shipping.api.create_shiprocket_order"
     }
 }
+
 webhooks = {
     "webhook_handler": "custom_shipping.api.webhook_handler"
 }
